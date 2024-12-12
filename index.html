@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steady-State Weight Calculator</title>
+    <style>
+        /* General body styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            color: #222;
+        }
+
+        p {
+            text-align: center;
+            max-width: 800px;
+            margin: 10px auto 20px auto;
+            line-height: 1.6;
+        }
+
+        form {
+            background: #ffffff;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #result {
+            font-size: 1.5em;
+            color: #007BFF;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Steady-State Weight Calculator</h1>
+    <p>
+        This calculator determines the <b>steady-state weight</b> using the <i>Mifflin-St Jeor equation</i>. 
+        It calculates the weight at which your Basal Metabolic Rate (BMR), adjusted for daily activity, 
+        matches your daily caloric intake. In other words, this is the weight you will naturally reach 
+        if you consistently consume the specified number of calories daily and maintain the given level of activity.
+    </p>
+    <p><b>Instructions:</b> Fill in the fields below with your daily calorie intake, height, age, sex, 
+        and an optional exercise modifier (which represents your physical activity level). The default exercise 
+        modifier is 1.15, which assumes light activity. The result will update automatically when all fields are filled.</p>
+
+    <form id="weightForm">
+        <label for="calories">Daily Calories (kcal):</label>
+        <input type="number" id="calories" placeholder="e.g., 2000" required>
+
+        <label for="height">Height (cm):</label>
+        <input type="number" id="height" placeholder="e.g., 170" required>
+
+        <label for="age">Age (years):</label>
+        <input type="number" id="age" placeholder="e.g., 30" required>
+
+        <label for="sex">Sex:</label>
+        <select id="sex" required>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+        </select>
+
+        <label for="exercise">Exercise Modifier (default 1.15):</label>
+        <input type="number" step="0.01" id="exercise" placeholder="e.g., 1.15" value="1.15">
+    </form>
+
+    <h2>Result: <span id="result">-</span> kg</h2>
+
+    <script>
+        // Function to persist input fields using localStorage
+        function persistInput(input) {
+            const key = "input-" + input.id;
+
+            // Load the value from localStorage (if exists)
+            const storedValue = localStorage.getItem(key);
+            if (storedValue) {
+                input.value = storedValue;
+            }
+
+            // Save the value to localStorage on input event
+            input.addEventListener('input', function () {
+                localStorage.setItem(key, input.value);
+                autoCalculate(); // Trigger auto calculation
+            });
+        }
+
+        // Function to calculate steady-state weight
+        function steadyStateSolverAlgebraic(dailyCalories, height, age, sex, exerciseModifier = 1.15) {
+            const genderConstant = sex === 'male' ? 5 : -161;
+            const numerator = (dailyCalories / exerciseModifier) - (6.25 * height) + (5 * age) - genderConstant;
+            const weight = numerator / 10;
+            return Math.round(weight * 100) / 100;
+        }
+
+        function autoCalculate() {
+            // Collect input values
+            const dailyCalories = parseFloat(document.getElementById('calories').value);
+            const height = parseFloat(document.getElementById('height').value);
+            const age = parseInt(document.getElementById('age').value);
+            const sex = document.getElementById('sex').value;
+            const exerciseModifier = parseFloat(document.getElementById('exercise').value);
+
+            // Check if all fields are valid
+            if (!isNaN(dailyCalories) && !isNaN(height) && !isNaN(age) && sex && !isNaN(exerciseModifier)) {
+                var weight = steadyStateSolverAlgebraic(dailyCalories, height, age, sex, exerciseModifier);
+				
+				if (weight < 0) {
+					weight = 0;
+				}
+                document.getElementById('result').innerText = weight;
+            } else {
+                document.getElementById('result').innerText = "-";
+            }
+        }
+
+        // Initialize form with persistence and auto-calculation
+        document.addEventListener("DOMContentLoaded", function () {
+            const inputs = document.querySelectorAll("input, select");
+            inputs.forEach(persistInput);
+
+            // Trigger auto-calculation on page load
+            autoCalculate();
+        });
+    </script>
+</body>
+</html>
