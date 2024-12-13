@@ -1,5 +1,7 @@
 ## Steady-State Weight Calculator
 
+Live demo: [Steady-State Weight Calculator](https://aadnk.github.io/steady-state-weight/)
+
 ### Purpose
 
 This tool calculates the **steady-state weight** of an individual using the **Mifflin-St Jeor equation**, a widely used formula to estimate Basal Metabolic Rate (BMR). 
