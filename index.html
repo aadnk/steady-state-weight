@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Steady-State Weight Calculator</title>
+    
+    <!-- Load external libraries -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
     <style>
         /* General body styling */
         body {
@@ -82,6 +87,31 @@
             color: #007BFF;
             font-weight: bold;
         }
+
+        #graphDialog {
+            display: none;
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        #closeDialog {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            color: red;
+        }
+
+        canvas {
+            width: 100%;
+            height: 400px;
+        }
     </style>
 </head>
 <body>
@@ -100,6 +130,9 @@
         <label for="calories">Daily Calories (kcal):</label>
         <input type="number" id="calories" placeholder="e.g., 2000" required>
 
+        <label for="startingWeight">Starting Weight (kg):</label>
+        <input type="number" id="startingWeight" placeholder="e.g., 80" required>
+
         <label for="height">Height (cm):</label>
         <input type="number" id="height" placeholder="e.g., 170" required>
 
@@ -114,9 +147,18 @@
 
         <label for="exercise">Exercise Modifier (default 1.15):</label>
         <input type="number" step="0.01" id="exercise" placeholder="e.g., 1.15" value="1.15">
+ 
+        <button type="button" id="showGraph">Show Graph</button>
     </form>
 
     <h2>Result: <span id="result">-</span> kg</h2>
+
+    <!-- Dialog for Graph -->
+    <div id="graphDialog">
+        <span id="closeDialog">X</span>
+        <h2>Weight Change Simulation</h2>
+        <canvas id="weightChart"></canvas>
+    </div>
 
     <div id="footer"><a href="https://github.com/aadnk/steady-state-weight" target="_blank">Source Code (GitHub)</a></div>
 
@@ -135,6 +177,9 @@
             input.addEventListener('input', function () {
                 localStorage.setItem(key, input.value);
                 autoCalculate(); // Trigger auto calculation
+
+                // Hide graph dialog if open
+                $("#graphDialog").hide();
             });
         }
 
@@ -167,6 +212,98 @@
             }
         }
 
+        // Function to calculate BMR using Mifflin-St Jeor
+        function mifflinStJeor(weight, height, age, sex) {
+            if (sex === 'male') {
+                return 10 * weight + 6.25 * height - 5 * age + 5;
+            } else if (sex === 'female') {
+                return 10 * weight + 6.25 * height - 5 * age - 161;
+            } else {
+                throw new Error("Invalid sex. Use 'male' or 'female'.");
+            }
+        }
+
+        // Simulate weight change over time
+        function simulateWeightChange(startingWeight, dailyCalories, height, age, sex, exerciseModifier) {
+            const kcalPerKg = 7200; // 1 kg of fat = 7200 kcal
+            const tol = 0.001; // Tolerance
+            let weight = startingWeight;
+            let days = 0;
+
+            const weights = [];
+            const daysArray = [];
+
+            while (true) {
+                // Calculate BMR and energy expenditure
+                const bmr = mifflinStJeor(weight, height, age, sex);
+                const totalEnergyExpenditure = bmr * exerciseModifier;
+
+                // Calculate daily weight change
+                const dailySurplus = dailyCalories - totalEnergyExpenditure;
+                const dailyWeightChange = dailySurplus / kcalPerKg;
+
+                // Update weight
+                const newWeight = weight + dailyWeightChange;
+
+                days++;
+                weights.push(newWeight.toFixed(2));
+                daysArray.push(days);
+
+                // Break condition
+                if (Math.abs(newWeight - weight) < tol || newWeight <= 0 || newWeight >= 1000) break;
+
+                weight = newWeight;
+            }
+            return { weights, daysArray };
+        }
+
+        // Function to display graph
+        function showGraph() {
+            const dailyCalories = parseFloat($("#calories").val());
+            const startingWeight = parseFloat($("#startingWeight").val());
+            const height = parseFloat($("#height").val());
+            const age = parseInt($("#age").val());
+            const sex = $("#sex").val();
+            const exerciseModifier = parseFloat($("#exercise").val());
+
+            if (isNaN(dailyCalories) || isNaN(height) || isNaN(age) || isNaN(exerciseModifier)) {
+                alert("Please fill in all fields correctly.");
+                return;
+            }
+            if (isNaN(startingWeight)) {
+                alert("Please enter a valid starting weight.");
+                return;
+            }
+            console.log("Starting weight: " + startingWeight);
+            const { weights, daysArray } = simulateWeightChange(startingWeight, dailyCalories, height, age, sex, exerciseModifier);
+            console.log(weights, daysArray);
+
+            $("#graphDialog").show();
+            const ctx = document.getElementById("weightChart").getContext("2d");
+
+            if (window.myChart) window.myChart.destroy();
+
+            window.myChart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: daysArray,
+                    datasets: [{
+                        label: "Weight (kg)",
+                        data: weights,
+                        borderColor: "#007BFF",
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Days" } },
+                        y: { title: { display: true, text: "Weight (kg)" } }
+                    }
+                }
+            });
+        }
+
         // Initialize form with persistence and auto-calculation
         document.addEventListener("DOMContentLoaded", function () {
             const inputs = document.querySelectorAll("input, select");
@@ -174,6 +311,14 @@
 
             // Trigger auto-calculation on page load
             autoCalculate();
+        });
+
+        // Button and Dialog Events
+        $(document).ready(function () {
+            $("#showGraph").click(showGraph);
+            $("#closeDialog").click(function () {
+                $("#graphDialog").hide();
+            });
         });
     </script>
 </body>
