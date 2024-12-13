@@ -76,6 +76,11 @@
             margin-top: 20px;
         }
 
+        h3 {
+            text-align: center;
+            margin-top: 10px;
+        }
+
         #footer {
             text-align: center;
             margin-top: 40px;
@@ -152,6 +157,7 @@
     </form>
 
     <h2>Result: <span id="result">-</span> kg</h2>
+    <h3>BMI: <span id="bmi">-</span></h3>
 
     <!-- Dialog for Graph -->
     <div id="graphDialog">
@@ -207,6 +213,10 @@
 					weight = 0;
 				}
                 document.getElementById('result').innerText = weight;
+
+                // Calculate and display BMI
+                const bmi = calculateBmi(weight, height); 
+                document.getElementById('bmi').innerText = bmi.toFixed(2); // Round to 2 decimal places
             } else {
                 document.getElementById('result').innerText = "-";
             }
@@ -221,6 +231,11 @@
             } else {
                 throw new Error("Invalid sex. Use 'male' or 'female'.");
             }
+        }
+
+        function calculateBmi(weight, height) {
+            const heightInMeters = height / 100;
+            return weight / (heightInMeters * heightInMeters);
         }
 
         // Simulate weight change over time
